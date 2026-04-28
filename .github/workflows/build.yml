@@ -1,18 +1,17 @@
-name: Build soLoader for Android ARM64
+name: Build soLoader with CMake
 
 on:
   push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:   # lets you manually trigger the build
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -21,19 +20,27 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install NDK 26.1.10909125
+      - name: Install NDK r27
+        run: sdkmanager --install "ndk;27.0.12077973"
+
+      - name: Debug - show directory structure
         run: |
-          sdkmanager --install "ndk;26.1.10909125"
+          echo "Repository root files:"
+          ls -la
+          echo "Looking for CMakeLists.txt:"
+          find . -name "CMakeLists.txt"
 
       - name: Build with CMake
         run: |
+          export NDK_PATH=${ANDROID_SDK_ROOT}/ndk/27.0.12077973
           cmake -B build -S . \
-            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/26.1.10909125/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${NDK_PATH}/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-24
-          cmake --build build
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+          cmake --build build -v
 
-      - name: Upload soLoader binary as artifact
+      - name: Upload soLoader binary
         uses: actions/upload-artifact@v4
         with:
           name: soLoader-arm64
